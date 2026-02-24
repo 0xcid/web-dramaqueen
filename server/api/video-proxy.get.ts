@@ -83,6 +83,11 @@ export default defineEventHandler(async (event) => {
             throw createError({ statusCode: response.status, message: `Upstream error: ${response.status}` })
         }
 
+        // Set proper status for range requests
+        if (response.status === 206) {
+            setHeader(event, 'status', 206)
+        }
+
         // Set response headers
         const copyHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges']
         copyHeaders.forEach(h => {
@@ -96,6 +101,8 @@ export default defineEventHandler(async (event) => {
             "Access-Control-Allow-Methods": "GET, OPTIONS",
             "Access-Control-Allow-Headers": "Range",
             "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+            "Cache-Control": "public, max-age=3600",
+            "Accept-Ranges": "bytes"
         })
 
         const contentType = response.headers.get("content-type") || ""

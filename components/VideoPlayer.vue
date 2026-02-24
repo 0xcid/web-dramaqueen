@@ -13,6 +13,7 @@
       class="w-full h-full cursor-pointer"
       :poster="poster"
       playsinline
+      preload="auto"
       @click="togglePlay"
       @timeupdate="handleTimeUpdate"
       @loadedmetadata="handleLoadedMetadata"
@@ -245,7 +246,9 @@ const initPlayer = () => {
   const video = videoRef.value
   if (!video) return
 
-  const isHls = props.src.includes('.m3u8') || props.src.includes('video-proxy')
+  const isM3U8 = props.src.includes('.m3u8')
+  const isProxiedM3U8 = props.src.includes('video-proxy') && props.src.includes('%2Em3u8')
+  const isHls = isM3U8 || isProxiedM3U8
 
   if (hlsInstance.value) {
     hlsInstance.value.destroy()
@@ -256,7 +259,14 @@ const initPlayer = () => {
     const hls = new Hls({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 30
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      startFragPrefetch: true,
+      fragLoadingMaxRetry: 3,
+      manifestLoadingMaxRetry: 3,
+      liveSyncDurationCount: 3,
+      liveMaxLatencyDurationCount: 5,
+      backBufferLength: 90
     })
     hls.loadSource(props.src)
     hls.attachMedia(video)

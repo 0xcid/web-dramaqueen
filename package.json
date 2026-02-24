@@ -9,7 +9,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "deploy": "nuxt build && wrangler pages deploy dist",
+    "deploy": "nuxt build",
     "cf:dev": "wrangler pages dev dist --kv=DRAMA_KV"
   },
   "dependencies": {

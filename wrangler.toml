@@ -1,33 +1,6 @@
 name = "dramaqueen"
 compatibility_date = "2025-02-01"
-pages_build_output_dir = ".output/public"
-
-[[kv_namespaces]]
-binding = "DRAMA_KV"
-id = "your-kv-namespace-id"
-
-[triggers]
-crons = ["*/10 * * * *"]
+pages_build_output_dir = "dist"
 
 [vars]
 NUXT_PUBLIC_API_BASE = "https://dramaqueen.iseries.my.id/api"
-
-[env.production]
-name = "dramaqueen-prod"
-
-[env.production.vars]
-NUXT_PUBLIC_API_BASE = "https://dramaqueen.iseries.my.id/api"
-
-[[env.production.kv_namespaces]]
-binding = "DRAMA_KV"
-id = "your-kv-namespace-id-prod"
-
-[env.preview]
-name = "dramaqueen-preview"
-
-[env.preview.vars]
-NUXT_PUBLIC_API_BASE = "https://dramaqueen.iseries.my.id/api"
-
-[[env.preview.kv_namespaces]]
-binding = "DRAMA_KV"
-id = "your-kv-namespace-id-preview"
