@@ -181,9 +181,36 @@ const selectEpisode = async (ep: Episode) => {
     if (props.drama) {
       updateEpisode(props.drama.id, ep.id, ep.episodeNumber)
     }
+
+    preloadNextEpisode()
   } catch (error) {
     console.error('Failed to load episode:', error)
   }
+}
+
+const preloadNextEpisode = () => {
+  if (!nextEpisode.value) return
+  
+  setTimeout(async () => {
+    try {
+      const nextEp = nextEpisode.value
+      if (!nextEp.videoUrl) {
+        const fullEp = await api.getEpisode(nextEp.id)
+        if (fullEp) {
+          nextEpisode.value = { ...nextEp, ...fullEp }
+        }
+      }
+      
+      if (nextEpisode.value?.videoUrl) {
+        const link = document.createElement('link')
+        link.rel = 'prefetch'
+        link.href = nextEpisode.value.videoUrl
+        document.head.appendChild(link)
+      }
+    } catch (e) {
+      console.log('Preload next episode skipped')
+    }
+  }, 2000)
 }
 
 const onProgress = (progress: number) => {
