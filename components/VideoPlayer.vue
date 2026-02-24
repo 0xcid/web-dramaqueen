@@ -259,14 +259,23 @@ const initPlayer = () => {
     const hls = new Hls({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 30,
-      maxMaxBufferLength: 60,
+      maxBufferLength: 10,
+      maxMaxBufferLength: 20,
+      maxBufferHole: 0.5,
+      maxBufferSize: 40 * 1000 * 1000,
+      maxBufferBackLength: 10,
       startFragPrefetch: true,
       fragLoadingMaxRetry: 3,
       manifestLoadingMaxRetry: 3,
+      manifestLoadingMaxRetryTimeout: 5000,
+      fragLoadingMaxRetryTimeout: 5000,
+      fragLoadingTimeOut: 8000,
+      manifestLoadingTimeOut: 8000,
       liveSyncDurationCount: 3,
       liveMaxLatencyDurationCount: 5,
-      backBufferLength: 90
+      backBufferLength: 30,
+      fastPlay: true,
+      nudgeMaxRetry: 3
     })
     hls.loadSource(props.src)
     hls.attachMedia(video)

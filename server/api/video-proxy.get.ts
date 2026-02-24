@@ -130,8 +130,21 @@ export default defineEventHandler(async (event) => {
                 return rewriteUrl(trimmed)
             }).join('\n')
 
+            setHeader(event, "Content-Type", "application/vnd.apple.mpegurl")
             return newText
         }
+
+        // For MP4/video files - stream directly without buffering
+        const contentLength = response.headers.get("content-length")
+        
+        // Ensure proper content type
+        const videoContentType = response.headers.get("content-type")
+
+        // Set all headers at once
+        const responseHeaders: Record<string, string> = {}
+        if (contentLength) responseHeaders["Content-Length"] = contentLength
+        if (videoContentType) responseHeaders["Content-Type"] = videoContentType
+        setHeaders(event, responseHeaders)
 
         return sendStream(event, response.body!)
     } catch (error: any) {
