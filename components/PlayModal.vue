@@ -45,6 +45,7 @@
               @ended="onEnded"
               @next="nextEpisode && selectEpisode(nextEpisode)"
               @previous="prevEpisode && selectEpisode(prevEpisode)"
+              @favorite="onFavoriteToggle"
             />
           </div>
           
@@ -253,6 +254,11 @@ watch(() => props.episodeId, async (newId) => {
     }
   }
 }, { immediate: true })
+
+const onFavoriteToggle = (isFav: boolean) => {
+  // Disini kita bisa panggil API endpoint untuk favorite
+  console.log('Video favorite toggled:', isFav, 'for drama:', props.drama?.title)
+}
 
 watch(() => props.show, (show) => {
   if (show) {

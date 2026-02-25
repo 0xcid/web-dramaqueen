@@ -6,6 +6,7 @@
     @mousemove="resetControls"
     @mouseleave="hideControls"
     @touchstart="resetControls"
+    @contextmenu.prevent
   >
     <video
       ref="videoEl"
@@ -161,6 +162,19 @@
           </div>
 
           <div class="flex items-center gap-4">
+            <!-- Favorite Button -->
+            <button 
+              class="text-white hover:text-red-500 transition-colors" 
+              @click="toggleFavorite"
+            >
+              <svg v-if="isFavorite" class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+              </svg>
+              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+
             <!-- Speed Selector -->
             <div class="relative">
               <button 
@@ -259,6 +273,7 @@ const emit = defineEmits<{
   error: [string]
   next: []
   previous: []
+  favorite: [boolean]
 }>()
 
 // Refs
@@ -284,6 +299,7 @@ const selectedSpeed = ref(1)
 // Touch Gestures State
 const isSpeedUp = ref(false)
 const isLongPressing = ref(false)
+const isFavorite = ref(false)
 const videoTouchStartY = ref(0)
 const videoTouchStartX = ref(0)
 const lastTapTime = ref(0)
@@ -448,6 +464,11 @@ const selectQuality = (opt: { label: string; value: string }) => {
     isLoading.value = true
     // In Nuxt, we let the parent handle src change via props
   }
+}
+
+const toggleFavorite = () => {
+  isFavorite.value = !isFavorite.value
+  emit('favorite', isFavorite.value)
 }
 
 const setSpeed = (rate: number) => {
