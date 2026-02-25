@@ -215,9 +215,6 @@
                 />
               </div>
             </div>
-          </div>
-
-          <div class="flex items-center gap-2 sm:gap-4">
 
             <!-- Speed Selector -->
             <div class="relative">
@@ -232,7 +229,7 @@
               </button>
               
               <Transition name="fade">
-                <div v-if="showSpeedMenu" class="absolute bottom-full right-0 mb-3 bg-dark-900 border border-dark-800 rounded-lg overflow-hidden shadow-xl min-w-[80px]">
+                <div v-if="showSpeedMenu" class="absolute bottom-full left-0 mb-3 bg-dark-900 border border-dark-800 rounded-lg overflow-hidden shadow-xl min-w-[80px]">
                   <button
                     v-for="rate in [0.5, 0.75, 1, 1.25, 1.5, 2]"
                     :key="rate"
@@ -263,7 +260,7 @@
               </button>
               
               <Transition name="fade">
-                <div v-if="showQualityMenu" class="absolute bottom-full right-0 mb-3 bg-dark-900 border border-dark-800 rounded-lg overflow-hidden shadow-xl min-w-[120px]">
+                <div v-if="showQualityMenu" class="absolute bottom-full left-0 mb-3 bg-dark-900 border border-dark-800 rounded-lg overflow-hidden shadow-xl min-w-[120px]">
                   <button
                     v-for="opt in qualityOptions"
                     :key="opt.value"
@@ -280,6 +277,22 @@
                 </div>
               </Transition>
             </div>
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-4">
+            <!-- Episode Selector Icon -->
+            <button class="text-white hover:text-primary-500 transition-colors" @click.stop="$emit('episodes')">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+
+            <!-- Next Episode -->
+            <button class="text-white hover:text-primary-500 transition-colors" @click.stop="$emit('next')">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </button>
 
             <!-- Fullscreen -->
             <button class="text-white hover:text-primary-500 transition-colors" @click="toggleFullscreen">
