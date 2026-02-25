@@ -88,20 +88,10 @@ const api = useApi()
 const { continueWatching } = useHistory()
 const { haptic } = useTelegram()
 
-const popular = ref<Drama[]>([])
-const latest = ref<Drama[]>([])
-
-const showPlayer = ref(false)
-const selectedDrama = ref<Drama | null>(null)
-const selectedEpisodes = ref<Episode[]>([])
-const selectedEpisodeId = ref('')
-
 const { data: homeData } = await useAsyncData('home', () => api.getHome())
 
-if (homeData.value) {
-  popular.value = homeData.value.popular || []
-  latest.value = homeData.value.latest || []
-}
+const popular = computed(() => homeData.value?.popular || [])
+const latest = computed(() => homeData.value?.latest || [])
 
 const playDrama = async (drama: Drama, episodeId?: string) => {
   try {
