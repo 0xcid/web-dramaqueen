@@ -43,11 +43,14 @@
               :qualities="qualityOptions"
               :title="drama?.title"
               :episodeText="currentEpisode ? `Episode ${currentEpisode.episodeNumber}` : ''"
+              :episodes="episodes"
+              :currentEpisodeId="currentEpisode?.id"
               @progress="onProgress"
               @ended="onEnded"
               @next="nextEpisode && selectEpisode(nextEpisode)"
               @previous="prevEpisode && selectEpisode(prevEpisode)"
               @back="$emit('close')"
+              @selectEpisode="selectEpisode"
             />
           </div>
           
