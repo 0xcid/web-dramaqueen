@@ -58,8 +58,18 @@ export const useApi = () => {
   const mapEpisodeData = (data: any): Episode => {
     if (!data) return data
 
+    const needsCorsProxy = (url: string): boolean => {
+      try {
+        const parsed = new URL(url)
+        const corsProxyDomains = ['whatbox.ca'] // Add others if known
+        return corsProxyDomains.some(d =>
+          parsed.hostname === d || parsed.hostname.endsWith(`.${d}`)
+        )
+      } catch { return false }
+    }
+
     const wrapWithProxy = (url: string): string => {
-      if (url && url.includes('@')) {
+      if (url && (url.includes('@') || needsCorsProxy(url))) {
         return `/api/video-proxy?url=${encodeURIComponent(url)}`
       }
       return url

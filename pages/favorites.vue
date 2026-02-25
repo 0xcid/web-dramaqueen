@@ -14,7 +14,7 @@
       <DramaCard
         v-for="item in favorites"
         :key="item.dramaId"
-        :drama="item.drama"
+        :drama="(item.drama as any)"
         @click="playDrama(item.drama)"
       />
     </div>
@@ -41,7 +41,7 @@ const selectedDrama = ref<Drama | null>(null)
 const selectedEpisodes = ref<Episode[]>([])
 const selectedEpisodeId = ref('')
 
-const playDrama = async (drama: Drama) => {
+const playDrama = async (drama: any) => {
   haptic('light')
   selectedDrama.value = drama
   selectedEpisodeId.value = ''

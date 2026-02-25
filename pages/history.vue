@@ -92,7 +92,7 @@ const formatDate = (dateStr: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const playDrama = async (drama: Drama, episodeId: string) => {
+const playDrama = async (drama: any, episodeId: string) => {
   haptic('light')
   selectedDrama.value = drama
   selectedEpisodeId.value = episodeId

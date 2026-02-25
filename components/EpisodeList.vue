@@ -5,7 +5,7 @@
         Episodes ({{ episodes.length }})
       </h3>
       <button
-        v-if="currentEpisode"
+        v-if="currentEpisodeId"
         class="text-xs text-primary-500"
         @click="$emit('scrollToCurrent')"
       >
