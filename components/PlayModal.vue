@@ -41,15 +41,35 @@
               :src="videoUrl"
               :poster="drama?.backdrop || drama?.poster"
               :qualities="qualityOptions"
+              :title="drama?.title"
+              :episodeText="currentEpisode ? `Episode ${currentEpisode.episodeNumber}` : ''"
               @progress="onProgress"
               @ended="onEnded"
               @next="nextEpisode && selectEpisode(nextEpisode)"
               @previous="prevEpisode && selectEpisode(prevEpisode)"
-              @favorite="onFavoriteToggle"
+              @back="$emit('close')"
             />
           </div>
           
-          <div class="flex-1 overflow-y-auto p-4 space-y-4">
+          <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="episodesContainer">
+            <!-- Action Bar (Favorite) -->
+            <div class="flex items-center justify-between">
+              <h3 class="text-white font-medium">Episodes</h3>
+              <button 
+                class="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors border"
+                :class="isCurrentDramaFavorite ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-dark-800 text-dark-300 border-dark-700 hover:text-white'"
+                @click="onFavoriteClick"
+              >
+                <svg v-if="isCurrentDramaFavorite" class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                <span class="text-xs font-semibold">{{ isCurrentDramaFavorite ? 'Favorit' : 'Tambah ke Favorit' }}</span>
+              </button>
+            </div>
+
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
               <button
                 v-for="ep in episodes"
@@ -141,6 +161,18 @@ const api = useApi()
 const currentEpisode = ref<Episode | null>(null)
 const videoUrl = ref('')
 const isLoadingEpisode = ref(false)
+const episodesContainer = ref<HTMLElement | null>(null)
+
+// Favorites integration
+const { isFavorite, toggleFavorite } = useFavorites()
+const isCurrentDramaFavorite = computed(() => props.drama ? isFavorite(props.drama.id) : false)
+
+const onFavoriteClick = () => {
+  if (props.drama) {
+    toggleFavorite(props.drama)
+    try { haptic('light') } catch (e) {}
+  }
+}
 
 const qualityOptions = computed(() => {
   if (!currentEpisode.value) return []
@@ -254,11 +286,6 @@ watch(() => props.episodeId, async (newId) => {
     }
   }
 }, { immediate: true })
-
-const onFavoriteToggle = (isFav: boolean) => {
-  // Disini kita bisa panggil API endpoint untuk favorite
-  console.log('Video favorite toggled:', isFav, 'for drama:', props.drama?.title)
-}
 
 watch(() => props.show, (show) => {
   if (show) {
