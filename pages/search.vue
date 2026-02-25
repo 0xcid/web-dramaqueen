@@ -41,13 +41,6 @@
       <p>Search for your favorite drama</p>
     </div>
     
-    <PlayModal
-      :show="showPlayer"
-      :drama="selectedDrama"
-      :episodes="selectedEpisodes"
-      :episode-id="selectedEpisodeId"
-      @close="closePlayer"
-    />
   </div>
 </template>
 
@@ -88,26 +81,9 @@ const onSelect = (drama: Drama) => {
   router.push(`/drama/${drama.id}`)
 }
 
-const playDrama = async (drama: Drama) => {
-  haptic('light')
-  selectedDrama.value = drama
-  selectedEpisodeId.value = ''
-  
-  try {
-    selectedEpisodes.value = await api.getEpisodes(drama.id)
-    
-    if (selectedEpisodes.value.length > 0) {
-      selectedEpisodeId.value = selectedEpisodes.value[0].id
-    }
-    
-    showPlayer.value = true
-  } catch (error) {
-    console.error('Failed to load episodes:', error)
-  }
-}
-
-const closePlayer = () => {
-  showPlayer.value = false
+const playDrama = (drama: Drama) => {
+  try { haptic('light') } catch (e) {}
+  navigateTo(`/watch/${drama.id}`)
 }
 
 onMounted(() => {

@@ -37,20 +37,30 @@
       <NuxtLink
         v-for="drama in results"
         :key="drama.id"
-        :to="`/drama/${drama.id}`"
-        class="flex items-center gap-3 p-3 hover:bg-dark-100 dark:hover:bg-dark-800 transition-colors"
-        @click="onResultClick(drama)"
+        :to="`/watch/${drama.id}`"
+        class="flex items-center gap-3 p-3 hover:bg-dark-800 transition-colors"
+        @click="onSelect(drama)"
       >
-        <img
-          :src="drama.poster"
-          :alt="drama.title"
-          class="w-12 h-16 object-cover rounded"
-        />
+        <div class="relative flex-shrink-0 w-12 h-16 rounded overflow-hidden bg-dark-700">
+          <img
+            :src="drama.poster"
+            :alt="drama.title"
+            class="w-full h-full object-cover"
+            loading="lazy"
+            @error="(e: Event) => { (e.target as HTMLImageElement).style.display = 'none' }"
+          />
+          <!-- Fallback icon if poster fails -->
+          <div class="absolute inset-0 flex items-center justify-center bg-dark-700">
+            <svg class="w-5 h-5 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+            </svg>
+          </div>
+        </div>
         <div class="flex-1 min-w-0">
-          <h4 class="font-medium text-dark-900 dark:text-white truncate">{{ drama.title }}</h4>
-          <div class="flex items-center gap-2 text-xs text-dark-500 dark:text-dark-400">
+          <h4 class="font-medium text-white text-sm truncate">{{ drama.title }}</h4>
+          <div class="flex items-center gap-2 mt-0.5 text-xs text-dark-400">
             <span v-if="drama.year">{{ drama.year }}</span>
-            <span v-if="drama.status" class="px-1.5 py-0.5 rounded bg-primary-500/20 text-primary-500">
+            <span v-if="drama.status" class="px-1.5 py-0.5 rounded-sm bg-primary-500/20 text-primary-400">
               {{ drama.status }}
             </span>
           </div>
@@ -79,6 +89,7 @@ const emit = defineEmits<{
   select: [Drama]
 }>()
 
+const router = useRouter()
 const api = useApi()
 
 const searchQuery = ref('')
@@ -127,8 +138,8 @@ const onSearch = () => {
   }
 }
 
-const onResultClick = (drama: Drama) => {
-  emit('select', drama)
+const onSelect = (drama: Drama) => {
+  router.push(`/watch/${drama.id}`)
   showResults.value = false
   searchQuery.value = ''
   results.value = []

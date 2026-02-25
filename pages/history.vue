@@ -1,7 +1,7 @@
 <template>
   <div class="px-4 space-y-4">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-dark-900 dark:text-white">History</h1>
+    <h1 class="text-xl font-bold text-white">History</h1>
       <button
         v-if="history.length > 0"
         class="text-sm text-red-500 hover:text-red-600"
@@ -54,27 +54,12 @@
       </div>
     </div>
     
-    <PlayModal
-      :show="showPlayer"
-      :drama="selectedDrama"
-      :episodes="selectedEpisodes"
-      :episode-id="selectedEpisodeId"
-      @close="closePlayer"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Drama, Episode } from '~/types'
-
-const api = useApi()
-const { history, clearHistory, removeFromHistory } = useHistory()
+const { history, clearHistory } = useHistory()
 const { haptic, showConfirm } = useTelegram()
-
-const showPlayer = ref(false)
-const selectedDrama = ref<Drama | null>(null)
-const selectedEpisodes = ref<Episode[]>([])
-const selectedEpisodeId = ref('')
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
@@ -83,30 +68,16 @@ const formatDate = (dateStr: string) => {
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
-  
   if (minutes < 1) return 'Just now'
   if (minutes < 60) return `${minutes}m ago`
   if (hours < 24) return `${hours}h ago`
   if (days < 7) return `${days}d ago`
-  
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const playDrama = async (drama: any, episodeId: string) => {
-  haptic('light')
-  selectedDrama.value = drama
-  selectedEpisodeId.value = episodeId
-  
-  try {
-    selectedEpisodes.value = await api.getEpisodes(drama.id)
-    showPlayer.value = true
-  } catch (error) {
-    console.error('Failed to load episodes:', error)
-  }
-}
-
-const closePlayer = () => {
-  showPlayer.value = false
+const playDrama = (drama: any, episodeId: string) => {
+  try { haptic('light') } catch (e) {}
+  navigateTo(`/watch/${drama.id}?ep=${episodeId}`)
 }
 
 const clearAll = async () => {
@@ -117,7 +88,5 @@ const clearAll = async () => {
   }
 }
 
-useHead(() => ({
-  title: 'History'
-}))
+useHead(() => ({ title: 'History' }))
 </script>

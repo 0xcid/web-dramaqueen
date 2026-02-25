@@ -1,6 +1,6 @@
 <template>
-  <div class="px-4 space-y-4">
-    <h1 class="text-xl font-bold text-dark-900 dark:text-white">All Drama</h1>
+  <div class="px-4 space-y-4 pt-4 pb-20">
+    <h1 class="text-xl font-bold text-white mb-2">All Drama</h1>
     
     <div v-if="pending" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
       <div v-for="i in 12" :key="i" class="space-y-2">
@@ -31,19 +31,11 @@
         </button>
       </div>
     </template>
-    
-    <PlayModal
-      :show="showPlayer"
-      :drama="selectedDrama"
-      :episodes="selectedEpisodes"
-      :episode-id="selectedEpisodeId"
-      @close="closePlayer"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Drama, Episode } from '~/types'
+import type { Drama } from '~/types'
 
 const api = useApi()
 const { haptic } = useTelegram()
@@ -53,12 +45,7 @@ const page = ref(1)
 const hasMore = ref(true)
 const loadingMore = ref(false)
 
-const showPlayer = ref(false)
-const selectedDrama = ref<Drama | null>(null)
-const selectedEpisodes = ref<Episode[]>([])
-const selectedEpisodeId = ref('')
-
-const { data, pending } = await useAsyncData('drama-list', () => api.getDramaList(1, 24))
+const { data, pending } = await useLazyAsyncData('drama-list', () => api.getDramaList(1, 24))
 
 watch(data, (newVal) => {
   if (newVal) {
@@ -69,17 +56,11 @@ watch(data, (newVal) => {
 
 const loadMore = async () => {
   if (loadingMore.value || !hasMore.value) return
-  
   loadingMore.value = true
   page.value++
-  
   try {
     const newData = await api.getDramaList(page.value, 24)
-    
-    if (newData.length < 24) {
-      hasMore.value = false
-    }
-    
+    if (newData.length < 24) hasMore.value = false
     dramas.value.push(...newData)
   } catch (error) {
     console.error('Failed to load more:', error)
@@ -89,38 +70,8 @@ const loadMore = async () => {
   }
 }
 
-const playDrama = async (drama: Drama) => {
-  try {
-    haptic('light')
-  } catch (e) {}
-  
-  selectedDrama.value = drama
-  selectedEpisodeId.value = ''
-  
-  try {
-    const episodes = await api.getEpisodes(drama.id)
-    
-    if (!episodes || episodes.length === 0) {
-      const { showAlert } = useTelegram()
-      showAlert('Maaf, episode drama ini belum tersedia.')
-      return
-    }
-    
-    selectedEpisodes.value = episodes
-    
-    if (selectedEpisodes.value.length > 0) {
-      selectedEpisodeId.value = selectedEpisodes.value[0].id
-    }
-    
-    showPlayer.value = true
-  } catch (error) {
-    console.error('Failed to load episodes:', error)
-    const { showAlert } = useTelegram()
-    showAlert('Gagal memuat episode. Silakan coba lagi nanti.')
-  }
-}
-
-const closePlayer = () => {
-  showPlayer.value = false
+const playDrama = (drama: Drama) => {
+  try { haptic('light') } catch (e) {}
+  navigateTo(`/watch/${drama.id}`)
 }
 </script>
