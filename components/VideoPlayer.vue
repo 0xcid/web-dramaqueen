@@ -13,8 +13,15 @@
       class="w-full h-full cursor-pointer"
       :poster="poster"
       playsinline
+      autoplay
       preload="auto"
+      :class="{
+        'object-contain object-center scale-110': isFullscreen && !isHorizontal,
+        'object-contain': !(isFullscreen && !isHorizontal)
+      }"
       @click="togglePlay"
+      @play="onPlay"
+      @pause="onPause"
       @timeupdate="handleTimeUpdate"
       @loadedmetadata="handleLoadedMetadata"
       @waiting="handleWaiting"
@@ -218,6 +225,7 @@ const isPlaying = ref(false)
 const isLoading = ref(true)
 const isMuted = ref(false)
 const isFullscreen = ref(false)
+const isHorizontal = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
 const volume = ref(1)
@@ -316,9 +324,11 @@ const initPlayer = () => {
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     // Safari & Mobile support
     video.src = props.src
+    video.play().catch(() => {})
   } else {
     // Normal MP4, etc
     video.src = props.src
+    video.play().catch(() => {})
   }
 }
 
@@ -341,10 +351,17 @@ const toggleMute = () => {
 const toggleFullscreen = () => {
   if (!containerRef.value) return
   if (!document.fullscreenElement) {
-    containerRef.value.requestFullscreen().catch(err => {
+    containerRef.value.requestFullscreen().then(() => {
+      if (isHorizontal.value && screen.orientation && 'lock' in screen.orientation) {
+        (screen.orientation as any).lock('landscape').catch(() => {})
+      }
+    }).catch(err => {
       console.error(`Error attempting to enable fullscreen: ${err.message}`)
     })
   } else {
+    if (screen.orientation && 'unlock' in screen.orientation) {
+      screen.orientation.unlock()
+    }
     document.exitFullscreen()
   }
 }
@@ -362,6 +379,7 @@ const handleTimeUpdate = () => {
 const handleLoadedMetadata = () => {
   if (videoEl.value) {
     duration.value = videoEl.value.duration
+    isHorizontal.value = videoEl.value.videoWidth > videoEl.value.videoHeight
     isLoading.value = false
     emit('loaded')
   }
@@ -481,6 +499,15 @@ const onEnded = () => {
     emit('ended')
 }
 
+const onPlay = () => {
+    isPlaying.value = true
+    resetControls()
+}
+
+const onPause = () => {
+    isPlaying.value = false
+}
+
 const onError = (e: Event) => {
     emit('error', 'Play error occured')
 }
@@ -503,6 +530,10 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', () => {
     isFullscreen.value = !!document.fullscreenElement
+    // Unlock orientation if exiting via hardware back or ESC
+    if (!document.fullscreenElement && screen.orientation && 'unlock' in screen.orientation) {
+      screen.orientation.unlock()
+    }
   })
 
   // Watch volume
