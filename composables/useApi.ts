@@ -31,14 +31,20 @@ export const useApi = () => {
 
   const mapDramaData = (data: any): Drama => {
     if (!data) return data
+
+    // Pick the first non-empty value from the candidate fields
+    const pick = (...fields: string[]) =>
+      fields.map(f => data[f]).find(v => v && String(v).trim() !== '') || ''
+
     return {
-      ...data, // Keep raw data for optional fields
+      ...data,
       id: String(data.drama_id || data.id || ''),
       title: data.name || data.title || 'Untitled',
-      poster: data.cover || data.cover_url || data.poster || data.image || '',
-      backdrop: data.img_landscape_url || data.backdrop || data.cover_url || '',
-      year: data.tahun_rilis ? String(data.tahun_rilis).slice(0, 4) : (data.year || ''),
-      status: data.is_finish ? 'Completed' : (data.is_coming ? 'Coming Soon' : 'Ongoing'),
+      // Portrait poster: prefer portrait-style covers, fall back to landscape URL
+      poster: pick('cover', 'poster', 'image', 'img', 'thumb', 'thumbnail', 'pic', 'photo', 'img_landscape_url', 'cover_url'),
+      backdrop: pick('img_landscape_url', 'backdrop', 'cover_url', 'cover'),
+      year: data.tahun_rilis ? String(data.tahun_rilis).slice(0, 4) : (data.tahun_int ? String(data.tahun_int) : (data.year || '')),
+      status: data.is_finish ? 'Completed' : (data.is_coming ? 'Coming Soon' : (data.status || 'Ongoing')),
       rating: data.rating ? String(data.rating) : data.rating
     }
   }

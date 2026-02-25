@@ -93,7 +93,7 @@ const onSearch = async (query: string) => {
 
 const onSelect = (drama: Drama) => {
   emit('close')
-  router.push(`/drama/${drama.id}`)
+  router.push(`/watch/${drama.id}`)
 }
 
 watch(() => props.show, (show) => {

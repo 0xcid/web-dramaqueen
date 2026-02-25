@@ -102,14 +102,6 @@
         @select="playEpisode"
       />
     </div>
-    
-    <PlayModal
-      :show="showPlayer"
-      :drama="drama"
-      :episodes="episodes"
-      :episode-id="selectedEpisodeId"
-      @close="closePlayer"
-    />
   </div>
   
   <div v-else-if="pending" class="p-4 space-y-4">
@@ -142,10 +134,8 @@ const { pending } = await useAsyncData(`drama-${route.params.id}`, async () => {
     api.getDramaDetail(route.params.id as string),
     api.getEpisodes(route.params.id as string)
   ])
-  
   drama.value = dramaData
   episodes.value = episodesData
-  
   return { drama: dramaData, episodes: episodesData }
 })
 
@@ -166,13 +156,8 @@ const playFirstEpisode = () => {
 }
 
 const playEpisode = (episode: Episode) => {
-  haptic('light')
-  selectedEpisodeId.value = episode.id
-  showPlayer.value = true
-}
-
-const closePlayer = () => {
-  showPlayer.value = false
+  try { haptic('light') } catch (e) {}
+  navigateTo(`/watch/${route.params.id}?ep=${episode.id}`)
 }
 
 onMounted(() => {

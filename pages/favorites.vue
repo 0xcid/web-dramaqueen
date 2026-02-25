@@ -19,51 +19,17 @@
       />
     </div>
     
-    <PlayModal
-      :show="showPlayer"
-      :drama="selectedDrama"
-      :episodes="selectedEpisodes"
-      :episode-id="selectedEpisodeId"
-      @close="closePlayer"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Drama, Episode } from '~/types'
-
-const api = useApi()
 const { favorites } = useFavorites()
 const { haptic } = useTelegram()
 
-const showPlayer = ref(false)
-const selectedDrama = ref<Drama | null>(null)
-const selectedEpisodes = ref<Episode[]>([])
-const selectedEpisodeId = ref('')
-
-const playDrama = async (drama: any) => {
-  haptic('light')
-  selectedDrama.value = drama
-  selectedEpisodeId.value = ''
-  
-  try {
-    selectedEpisodes.value = await api.getEpisodes(drama.id)
-    
-    if (selectedEpisodes.value.length > 0) {
-      selectedEpisodeId.value = selectedEpisodes.value[0].id
-    }
-    
-    showPlayer.value = true
-  } catch (error) {
-    console.error('Failed to load episodes:', error)
-  }
+const playDrama = (drama: any) => {
+  try { haptic('light') } catch (e) {}
+  navigateTo(`/watch/${drama.id}`)
 }
 
-const closePlayer = () => {
-  showPlayer.value = false
-}
-
-useHead(() => ({
-  title: 'Favorites'
-}))
+useHead(() => ({ title: 'Favorites' }))
 </script>
