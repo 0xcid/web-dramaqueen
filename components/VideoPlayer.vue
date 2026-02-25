@@ -7,7 +7,6 @@
     @mouseleave="hideControls"
     @touchstart="resetControls"
   >
-    <!-- Video Element -->
     <video
       ref="videoEl"
       class="w-full h-full cursor-pointer"
@@ -19,7 +18,10 @@
         'object-contain object-center scale-110': isFullscreen && !isHorizontal,
         'object-contain': !(isFullscreen && !isHorizontal)
       }"
-      @click="togglePlay"
+      @click="handleVideoClick"
+      @touchstart="handleVideoTouchStart"
+      @touchmove="handleVideoTouchMove"
+      @touchend="handleVideoTouchEnd"
       @play="onPlay"
       @pause="onPause"
       @timeupdate="handleTimeUpdate"
@@ -37,6 +39,16 @@
           <div class="absolute inset-0 border-4 border-primary-500/20 rounded-full"></div>
           <div class="absolute inset-0 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
+      </div>
+    </Transition>
+
+    <!-- Speed Up Overlay -->
+    <Transition name="fade">
+      <div v-if="isSpeedUp" class="absolute top-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm font-bold flex items-center gap-2 z-[60] pointer-events-none">
+        <svg class="w-4 h-4 text-primary-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+        2x Speed
       </div>
     </Transition>
 
@@ -149,11 +161,42 @@
           </div>
 
           <div class="flex items-center gap-4">
+            <!-- Speed Selector -->
+            <div class="relative">
+              <button 
+                class="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs font-bold text-white transition-colors flex items-center gap-1"
+                @click="showSpeedMenu = !showSpeedMenu; showQualityMenu = false"
+              >
+                {{ selectedSpeed }}x
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <Transition name="fade">
+                <div v-if="showSpeedMenu" class="absolute bottom-full right-0 mb-3 bg-dark-900 border border-dark-800 rounded-lg overflow-hidden shadow-xl min-w-[80px]">
+                  <button
+                    v-for="rate in [0.5, 0.75, 1, 1.25, 1.5, 2]"
+                    :key="rate"
+                    class="block w-full text-left px-4 py-2 text-xs transition-colors"
+                    :class="[
+                      selectedSpeed === rate 
+                        ? 'bg-primary-500 text-white' 
+                        : 'text-dark-200 hover:bg-dark-800'
+                    ]"
+                    @click="setSpeed(rate)"
+                  >
+                    {{ rate }}x
+                  </button>
+                </div>
+              </Transition>
+            </div>
+
             <!-- Quality Selector -->
             <div v-if="qualityOptions.length > 0" class="relative" ref="menuRef">
               <button 
                 class="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs font-bold text-white transition-colors flex items-center gap-1"
-                @click="showQualityMenu = !showQualityMenu"
+                @click="showQualityMenu = !showQualityMenu; showSpeedMenu = false"
               >
                 {{ currentQualityLabel }}
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,6 +257,8 @@ const emit = defineEmits<{
   ended: []
   loaded: []
   error: [string]
+  next: []
+  previous: []
 }>()
 
 // Refs
@@ -233,6 +278,20 @@ const volume = ref(1)
 const error = ref('')
 const showControls = ref(true)
 const showQualityMenu = ref(false)
+const showSpeedMenu = ref(false)
+const selectedSpeed = ref(1)
+
+// Touch Gestures State
+const isSpeedUp = ref(false)
+const isLongPressing = ref(false)
+const videoTouchStartY = ref(0)
+const videoTouchStartX = ref(0)
+const lastTapTime = ref(0)
+const ignoreNextClick = ref(false)
+const savedPlaybackRate = ref(1)
+let tapTimeoutRef: any = null
+let longPressTimerRef: any = null
+
 let controlsTimeout: any = null
 let cleanupFullscreen: (() => void) | null = null
 
@@ -389,6 +448,108 @@ const selectQuality = (opt: { label: string; value: string }) => {
     isLoading.value = true
     // In Nuxt, we let the parent handle src change via props
   }
+}
+
+const setSpeed = (rate: number) => {
+  selectedSpeed.value = rate
+  showSpeedMenu.value = false
+  if (videoEl.value) {
+    videoEl.value.playbackRate = rate
+  }
+}
+
+// Touch Gestures Handlers
+const handleVideoClick = (e: MouseEvent) => {
+  if (ignoreNextClick.value) return;
+
+  const now = Date.now()
+  const DOUBLE_TAP_DELAY = 300
+
+  if (now - lastTapTime.value < DOUBLE_TAP_DELAY) {
+    if (tapTimeoutRef) {
+      clearTimeout(tapTimeoutRef)
+      tapTimeoutRef = null
+    }
+    togglePlay()
+    lastTapTime.value = 0
+    resetControls()
+  } else {
+    lastTapTime.value = now
+    tapTimeoutRef = setTimeout(() => {
+      if (showControls.value) {
+        togglePlay()
+      }
+      resetControls()
+      tapTimeoutRef = null
+    }, DOUBLE_TAP_DELAY)
+  }
+}
+
+const handleVideoTouchStart = (e: TouchEvent) => {
+  videoTouchStartY.value = e.touches[0].clientY
+  videoTouchStartX.value = e.touches[0].clientX
+
+  if (isFullscreen.value) {
+    isLongPressing.value = false
+    longPressTimerRef = setTimeout(() => {
+      isLongPressing.value = true
+      savedPlaybackRate.value = videoEl.value?.playbackRate || 1
+      if (videoEl.value) {
+        videoEl.value.playbackRate = 2.0
+      }
+      isSpeedUp.value = true
+    }, 500)
+  }
+}
+
+const handleVideoTouchMove = (e: TouchEvent) => {
+  if (longPressTimerRef) {
+    const deltaX = Math.abs(e.touches[0].clientX - videoTouchStartX.value)
+    const deltaY = Math.abs(e.touches[0].clientY - videoTouchStartY.value)
+    if (deltaX > 10 || deltaY > 10) {
+      clearTimeout(longPressTimerRef)
+      longPressTimerRef = null
+    }
+  }
+}
+
+const handleVideoTouchEnd = (e: TouchEvent) => {
+  if (longPressTimerRef) {
+    clearTimeout(longPressTimerRef)
+    longPressTimerRef = null
+  }
+
+  if (isLongPressing.value) {
+    if (videoEl.value) {
+      videoEl.value.playbackRate = savedPlaybackRate.value
+    }
+    isSpeedUp.value = false
+    isLongPressing.value = false
+    return
+  }
+
+  if (!isHorizontal.value) {
+    const deltaY = e.changedTouches[0].clientY - videoTouchStartY.value
+    const deltaX = e.changedTouches[0].clientX - videoTouchStartX.value
+    const threshold = 100
+
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > threshold) {
+      if (deltaY < 0) {
+        emit('next')
+        return
+      } else if (deltaY > 0) {
+        emit('previous')
+        return
+      }
+    }
+  }
+
+  ignoreNextClick.value = true
+  setTimeout(() => { ignoreNextClick.value = false }, 500)
+  
+  // Trigger single/double tap logic
+  const mockEvent = new MouseEvent('click')
+  handleVideoClick(mockEvent)
 }
 
 const retry = () => {

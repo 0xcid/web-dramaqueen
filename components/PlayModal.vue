@@ -43,6 +43,8 @@
               :qualities="qualityOptions"
               @progress="onProgress"
               @ended="onEnded"
+              @next="nextEpisode && selectEpisode(nextEpisode)"
+              @previous="prevEpisode && selectEpisode(prevEpisode)"
             />
           </div>
           
