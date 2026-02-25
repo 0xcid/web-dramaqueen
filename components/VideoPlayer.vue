@@ -281,7 +281,7 @@
 
           <div class="flex items-center gap-2 sm:gap-4">
             <!-- Episode Selector Icon -->
-            <button class="text-white hover:text-primary-500 transition-colors" @click.stop="$emit('episodes')">
+            <button class="text-white hover:text-primary-500 transition-colors" @click.stop="isFullscreen ? showEpisodeDrawer = !showEpisodeDrawer : $emit('episodes')">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
@@ -307,6 +307,41 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Fullscreen Episode Drawer -->
+    <Transition name="fade">
+      <div 
+        v-if="isFullscreen && showEpisodeDrawer"
+        class="absolute top-0 right-0 bottom-0 w-64 md:w-80 bg-black/95 border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+        @click.stop
+      >
+        <div class="px-4 py-3 flex items-center justify-between border-b border-white/10">
+          <h3 class="text-white font-medium text-sm md:text-base">Pilih Episode</h3>
+          <button @click="showEpisodeDrawer = false" class="text-white/70 hover:text-white p-2">
+            <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div class="grid grid-cols-5 gap-2">
+            <button
+              v-for="ep in episodes"
+              :key="ep.id"
+              class="aspect-square rounded flex items-center justify-center text-xs md:text-sm font-medium transition-all"
+              :class="[
+                currentEpisodeId === ep.id
+                  ? 'bg-primary-500 text-white shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              ]"
+              @click="$emit('selectEpisode', ep); showEpisodeDrawer = false"
+            >
+              {{ ep.episodeNumber }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -323,6 +358,8 @@ const props = defineProps<{
   }[]
   title?: string
   episodeText?: string
+  episodes?: any[]
+  currentEpisodeId?: string | number
 }>()
 
 const emit = defineEmits<{
@@ -334,6 +371,7 @@ const emit = defineEmits<{
   previous: []
   back: []
   episodes: []
+  selectEpisode: [any]
 }>()
 
 // Refs
@@ -354,6 +392,7 @@ const error = ref('')
 const showControls = ref(true)
 const showQualityMenu = ref(false)
 const showSpeedMenu = ref(false)
+const showEpisodeDrawer = ref(false)
 const selectedSpeed = ref(1)
 
 // Touch Gestures State
