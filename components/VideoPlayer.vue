@@ -13,8 +13,12 @@
       class="w-full h-full cursor-pointer"
       :poster="poster"
       playsinline
+      webkit-playsinline
       autoplay
       preload="auto"
+      :controls="false"
+      controlsList="nodownload nofullscreen noremoteplayback"
+      disablePictureInPicture
       :class="{
         'object-contain object-center scale-110': isFullscreen && !isHorizontal,
         'object-contain': !(isFullscreen && !isHorizontal)
@@ -72,20 +76,80 @@
       </div>
     </Transition>
 
-    <!-- Center Play/Pause Large Button (Transient) -->
+    <!-- Center Controls (Skip Back, Play/Pause, Skip Fwd) -->
     <Transition name="scale">
-      <div v-if="showControls && !isLoading && !error" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div v-if="showControls && !isLoading && !error" class="absolute inset-0 flex items-center justify-center gap-10 sm:gap-16 pointer-events-none z-30">
+        
+        <!-- Skip Backward 10s -->
         <button 
-          class="w-20 h-20 flex items-center justify-center bg-white/10 hover:bg-primary-500/80 backdrop-blur-md rounded-full text-white transition-all pointer-events-auto active:scale-90"
-          @click="togglePlay"
+          class="w-12 h-12 flex items-center justify-center bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all pointer-events-auto active:scale-90"
+          @click.stop="skip(-10)"
         >
-          <svg v-if="!isPlaying" class="w-10 h-10 translate-x-1" fill="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+          </svg>
+        </button>
+
+        <!-- Play/Pause -->
+        <button 
+          class="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-primary-500/80 hover:bg-primary-500 backdrop-blur-md rounded-full text-white transition-all pointer-events-auto active:scale-90"
+          @click.stop="togglePlay"
+        >
+          <svg v-if="!isPlaying" class="w-8 h-8 sm:w-10 sm:h-10 translate-x-1" fill="currentColor" viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z"/>
           </svg>
-          <svg v-else class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+          <svg v-else class="w-8 h-8 sm:w-10 sm:h-10" fill="currentColor" viewBox="0 0 24 24">
             <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
           </svg>
         </button>
+
+        <!-- Skip Forward 10s -->
+        <button 
+          class="w-12 h-12 flex items-center justify-center bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all pointer-events-auto active:scale-90"
+          @click.stop="skip(10)"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+          </svg>
+        </button>
+
+      </div>
+    </Transition>
+
+    <!-- Top Bar -->
+    <Transition name="fade">
+      <div 
+        v-show="showControls || !isPlaying"
+        class="absolute top-0 left-0 right-0 p-4 pb-10 bg-gradient-to-b from-black/80 to-transparent z-40 flex items-start justify-between pointer-events-none"
+      >
+        <!-- Left: Back, Title, Episode -->
+        <div class="flex items-center gap-3 pointer-events-auto">
+          <button class="text-white hover:text-primary-500 transition-colors p-1" @click.stop="$emit('back')">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div class="flex flex-col">
+            <h2 class="text-white font-bold text-sm sm:text-base line-clamp-1">{{ title }}</h2>
+            <span v-if="episodeText" class="text-dark-300 text-xs">{{ episodeText }}</span>
+          </div>
+        </div>
+
+        <!-- Right: More options -->
+        <div class="flex items-center gap-3 pointer-events-auto">
+          <!-- Lock Icon (Placeholder) -->
+          <button class="text-white hover:text-primary-500 transition-colors p-1 hidden sm:block">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </button>
+          <!-- More Settings (Placeholder) -->
+          <button class="text-white hover:text-primary-500 transition-colors p-1">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </button>
+        </div>
       </div>
     </Transition>
 
@@ -96,37 +160,34 @@
         class="absolute bottom-0 left-0 right-0 p-4 pt-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent z-50 flex flex-col gap-3"
         @click.stop
       >
-        <!-- Progress Bar -->
-        <div class="relative group/progress h-5 flex items-center cursor-pointer" @mousedown="startSeek">
-          <div class="absolute inset-0 h-1.5 top-1/2 -translate-y-1/2 bg-white/20 rounded-full overflow-hidden transition-all group-hover/progress:h-2">
-            <!-- Buffering Bar -->
-            <div 
-              class="absolute inset-0 bg-white/10"
-              :style="{ width: bufferedProgress + '%' }"
-            ></div>
-            <!-- Progress Fill -->
-            <div 
-              class="absolute inset-0 bg-primary-500 shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
-              :style="{ width: progressPercent + '%' }"
-            ></div>
+        <!-- Progress Bar & Time -->
+        <div class="flex items-center gap-3 w-full">
+          <div class="relative group/progress h-5 flex-1 flex items-center cursor-pointer" @mousedown="startSeek">
+            <div class="absolute inset-0 h-1.5 top-1/2 -translate-y-1/2 bg-white/20 rounded-full overflow-hidden transition-all group-hover/progress:h-2">
+              <div class="absolute inset-0 bg-white/10" :style="{ width: bufferedProgress + '%' }"></div>
+              <div class="absolute inset-0 bg-primary-500 shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" :style="{ width: progressPercent + '%' }"></div>
+            </div>
+            <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-white rounded-full shadow-lg scale-0 group-hover/progress:scale-100 transition-transform z-10" :style="{ left: progressPercent + '%' }"></div>
           </div>
-          <!-- Seek Handle -->
-          <div 
-            class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-white rounded-full shadow-lg scale-0 group-hover/progress:scale-100 transition-transform z-10"
-            :style="{ left: progressPercent + '%' }"
-          ></div>
+          
+          <!-- Time Display -->
+          <span class="text-white/90 text-[10px] sm:text-xs font-medium font-mono whitespace-nowrap">
+            {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+          </span>
         </div>
 
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <!-- Play/Pause -->
-            <button class="text-white hover:text-primary-500 transition-colors" @click="togglePlay">
-              <svg v-if="!isPlaying" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
+        <div class="flex items-center justify-between mt-1">
+          <div class="flex items-center gap-3 sm:gap-4">
+            <!-- Lock Icon (Placeholder) -->
+            <button class="text-white hover:text-primary-500 transition-colors p-1 sm:hidden">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <svg v-else class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-              </svg>
+            </button>
+
+            <!-- Audio & Subtitles (Dummy) -->
+            <button class="text-white hover:text-primary-500 font-medium text-[10px] sm:text-xs transition-colors p-1 hidden sm:block">
+              Trek audio dan subtitle
             </button>
 
             <!-- Volume -->
@@ -154,26 +215,9 @@
                 />
               </div>
             </div>
-
-            <!-- Time Display -->
-            <span class="text-white text-xs font-medium font-mono">
-              {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
-            </span>
           </div>
 
-          <div class="flex items-center gap-4">
-            <!-- Favorite Button -->
-            <button 
-              class="text-white hover:text-red-500 transition-colors" 
-              @click="toggleFavorite"
-            >
-              <svg v-if="isFavorite" class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
-              </svg>
-              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </button>
+          <div class="flex items-center gap-2 sm:gap-4">
 
             <!-- Speed Selector -->
             <div class="relative">
@@ -264,6 +308,8 @@ const props = defineProps<{
     label: string
     value: string
   }[]
+  title?: string
+  episodeText?: string
 }>()
 
 const emit = defineEmits<{
@@ -273,7 +319,8 @@ const emit = defineEmits<{
   error: [string]
   next: []
   previous: []
-  favorite: [boolean]
+  back: []
+  episodes: []
 }>()
 
 // Refs
@@ -299,7 +346,6 @@ const selectedSpeed = ref(1)
 // Touch Gestures State
 const isSpeedUp = ref(false)
 const isLongPressing = ref(false)
-const isFavorite = ref(false)
 const videoTouchStartY = ref(0)
 const videoTouchStartX = ref(0)
 const lastTapTime = ref(0)
@@ -466,9 +512,10 @@ const selectQuality = (opt: { label: string; value: string }) => {
   }
 }
 
-const toggleFavorite = () => {
-  isFavorite.value = !isFavorite.value
-  emit('favorite', isFavorite.value)
+const skip = (seconds: number) => {
+  if (videoEl.value) {
+    videoEl.value.currentTime += seconds
+  }
 }
 
 const setSpeed = (rate: number) => {
@@ -817,5 +864,13 @@ input[type="range"]::-webkit-slider-runnable-track {
   margin: 0 !important;
   padding: 0 !important;
   border-radius: 0 !important;
+}
+
+/* Force hide Safari/iOS native controls leaking out */
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-enclosure {
+  display: none !important;
 }
 </style>
