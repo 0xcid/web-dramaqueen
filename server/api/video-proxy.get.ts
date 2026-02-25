@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery, getHeader, setHeaders, sendStream, sendError, createError } from 'h3'
+import { defineEventHandler, getQuery, getHeader, setHeaders, setResponseStatus, sendStream, sendError, createError } from 'h3'
 
 // Whitelist of allowed video hosting domains
 const ALLOWED_DOMAINS = [
@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
 
         // Set proper status for range requests
         if (response.status === 206) {
-            setHeader(event, 'status', 206)
+            setResponseStatus(event, 206)
         }
 
         // Set response headers
@@ -95,18 +95,18 @@ export default defineEventHandler(async (event) => {
             if (val) setHeaders(event, { [h]: val })
         })
 
+        const contentType = response.headers.get("content-type") || ""
+        const isM3U8 = contentType.includes("mpegurl") || contentType.includes("x-mpegurl") || videoUrl.includes(".m3u8")
+
         // CORS headers
         setHeaders(event, {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, OPTIONS",
             "Access-Control-Allow-Headers": "Range",
             "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": isM3U8 ? "public, max-age=10" : "public, max-age=86400", // Aggressive cache for non-manifest
             "Accept-Ranges": "bytes"
         })
-
-        const contentType = response.headers.get("content-type") || ""
-        const isM3U8 = contentType.includes("mpegurl") || contentType.includes("x-mpegurl") || videoUrl.includes(".m3u8")
 
         if (isM3U8) {
             const text = await response.text()
@@ -115,7 +115,11 @@ export default defineEventHandler(async (event) => {
             const rewriteUrl = (u: string) => {
                 try {
                     const absoluteUrl = new URL(u, baseUrl).toString()
-                    return `/api/video-proxy?url=${encodeURIComponent(absoluteUrl)}`
+                    const parsedUrl = new URL(absoluteUrl)
+                    if (parsedUrl.username || parsedUrl.password) {
+                        return `/api/video-proxy?url=${encodeURIComponent(absoluteUrl)}`
+                    }
+                    return absoluteUrl
                 } catch {
                     return u
                 }
@@ -130,13 +134,13 @@ export default defineEventHandler(async (event) => {
                 return rewriteUrl(trimmed)
             }).join('\n')
 
-            setHeader(event, "Content-Type", "application/vnd.apple.mpegurl")
+            setHeaders(event, { "Content-Type": "application/vnd.apple.mpegurl" })
             return newText
         }
 
         // For MP4/video files - stream directly without buffering
         const contentLength = response.headers.get("content-length")
-        
+
         // Ensure proper content type
         const videoContentType = response.headers.get("content-type")
 

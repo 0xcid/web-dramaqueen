@@ -9,7 +9,7 @@
   >
     <!-- Video Element -->
     <video
-      ref="videoRef"
+      ref="videoEl"
       class="w-full h-full cursor-pointer"
       :poster="poster"
       playsinline
@@ -17,8 +17,8 @@
       @click="togglePlay"
       @timeupdate="handleTimeUpdate"
       @loadedmetadata="handleLoadedMetadata"
-      @waiting="isLoading = true"
-      @playing="isLoading = false"
+      @waiting="handleWaiting"
+      @playing="handlePlaying"
       @ended="onEnded"
       @error="onError"
     />
@@ -77,7 +77,7 @@
         @click.stop
       >
         <!-- Progress Bar -->
-        <div class="relative group/progress h-5 flex items-center cursor-pointer" @mousedown="startSeek" @mousemove="onPreviewSeek">
+        <div class="relative group/progress h-5 flex items-center cursor-pointer" @mousedown="startSeek">
           <div class="absolute inset-0 h-1.5 top-1/2 -translate-y-1/2 bg-white/20 rounded-full overflow-hidden transition-all group-hover/progress:h-2">
             <!-- Buffering Bar -->
             <div 
@@ -209,7 +209,7 @@ const emit = defineEmits<{
 }>()
 
 // Refs
-const videoRef = ref<HTMLVideoElement | null>(null)
+const videoEl = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const hlsInstance = ref<Hls | null>(null)
 
@@ -243,7 +243,7 @@ const qualityOptions = computed(() => props.qualities || [])
 
 // Initialization & HLS
 const initPlayer = () => {
-  const video = videoRef.value
+  const video = videoEl.value
   if (!video) return
 
   const isM3U8 = props.src.includes('.m3u8')
@@ -259,22 +259,23 @@ const initPlayer = () => {
     const hls = new Hls({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 10,
-      maxMaxBufferLength: 20,
-      maxBufferHole: 0.5,
-      maxBufferSize: 40 * 1000 * 1000,
-      maxBufferBackLength: 10,
-      startFragPrefetch: true,
+      maxBufferLength: 5,        // Buffer 5 detik saja untuk startup cepat (dinaikkan dikit dari 3 biar gak buffer berulang)
+      maxMaxBufferLength: 10,     // Max buffer 10 detik
+      maxBufferHole: 1,          // Toleransi gap lebih tinggi
+      maxBufferSize: 15 * 1000 * 1000,  // 15MB max
+      startFragPrefetch: true,   
+      startLevel: -1,            // Auto-detect level terbaik
+      abrEwmaDefaultEstimate: 500000, // Asumsi awal 500kbps (konservatif)
+      abrBandWidthUpFactor: 0.7, // Naikkan kualitas lebih lambat
       fragLoadingMaxRetry: 3,
       manifestLoadingMaxRetry: 3,
       manifestLoadingMaxRetryTimeout: 5000,
       fragLoadingMaxRetryTimeout: 5000,
-      fragLoadingTimeOut: 8000,
-      manifestLoadingTimeOut: 8000,
+      fragLoadingTimeOut: 15000,    // Timeout lebih lama (proxy = slower)
+      manifestLoadingTimeOut: 15000, // Timeout lebih lama
       liveSyncDurationCount: 3,
       liveMaxLatencyDurationCount: 5,
-      backBufferLength: 30,
-      fastPlay: true,
+      backBufferLength: 10,
       nudgeMaxRetry: 3
     })
     hls.loadSource(props.src)
@@ -284,6 +285,17 @@ const initPlayer = () => {
         isPlaying.value = false
       })
     })
+
+    // Listen to buffering events to toggle loading state
+    hls.on(Hls.Events.FRAG_LOADING, () => {
+      // Don't blindly show loading, wait for FRAG_BUFFERED or Stalled
+    })
+    
+    hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        isLoading.value = false;
+        error.value = ''
+    })
+
     hls.on(Hls.Events.ERROR, (_, data) => {
       if (data.fatal) {
         switch (data.type) {
@@ -312,18 +324,18 @@ const initPlayer = () => {
 
 // Controls
 const togglePlay = () => {
-  if (!videoRef.value) return
+  if (!videoEl.value) return
   if (isPlaying.value) {
-    videoRef.value.pause()
+    videoEl.value.pause()
   } else {
-    videoRef.value.play()
+    videoEl.value.play()
   }
 }
 
 const toggleMute = () => {
-  if (!videoRef.value) return
+  if (!videoEl.value) return
   isMuted.value = !isMuted.value
-  videoRef.value.muted = isMuted.value
+  videoEl.value.muted = isMuted.value
 }
 
 const toggleFullscreen = () => {
@@ -338,9 +350,9 @@ const toggleFullscreen = () => {
 }
 
 const handleTimeUpdate = () => {
-  if (videoRef.value) {
-    currentTime.value = videoRef.value.currentTime
-    const buffered = videoRef.value.buffered
+  if (videoEl.value) {
+    currentTime.value = videoEl.value.currentTime
+    const buffered = videoEl.value.buffered
     if (buffered.length > 0) {
       bufferedProgress.value = (buffered.end(buffered.length - 1) / duration.value) * 100
     }
@@ -348,8 +360,8 @@ const handleTimeUpdate = () => {
 }
 
 const handleLoadedMetadata = () => {
-  if (videoRef.value) {
-    duration.value = videoRef.value.duration
+  if (videoEl.value) {
+    duration.value = videoEl.value.duration
     isLoading.value = false
     emit('loaded')
   }
@@ -404,15 +416,15 @@ const startSeek = (e: MouseEvent) => {
 }
 
 const updateSeek = (e: MouseEvent) => {
-  if (!isSeeking || !videoRef.value || !containerRef.value) return
+  if (!isSeeking || !videoEl.value || !containerRef.value) return
   const progressContainer = (e.currentTarget as HTMLElement).closest('.group/progress') || (e.target as HTMLElement).closest('.group/progress')
   if (!progressContainer) return
   
   const rect = progressContainer.getBoundingClientRect()
   const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
   const percent = x / rect.width
-  videoRef.value.currentTime = percent * duration.value
-  currentTime.value = videoRef.value.currentTime
+  videoEl.value.currentTime = percent * duration.value
+  currentTime.value = videoEl.value.currentTime
 }
 
 const stopSeek = () => {
@@ -441,14 +453,48 @@ const handleKeydown = (e: KeyboardEvent) => {
       break
     case 'arrowleft':
       e.preventDefault()
-      if (videoRef.value) videoRef.value.currentTime -= 10
+      if (videoEl.value) videoEl.value.currentTime -= 10
       break
     case 'arrowright':
       e.preventDefault()
-      if (videoRef.value) videoRef.value.currentTime += 10
+      if (videoEl.value) videoEl.value.currentTime += 10
       break
   }
   resetControls()
+}
+
+// Stalled Recovery
+let stallTimeout: any = null
+const checkStalled = () => {
+    if(!videoEl.value) return;
+    
+    // If not paused, and waiting for data for > 15 seconds
+    if (!videoEl.value.paused && isLoading.value) {
+        error.value = 'Koneksi melambat atau terputus. Silakan coba lagi.'
+        if(hlsInstance.value) {
+          hlsInstance.value.stopLoad()
+        }
+    }
+}
+
+const onEnded = () => {
+    emit('ended')
+}
+
+const onError = (e: Event) => {
+    emit('error', 'Play error occured')
+}
+
+const handleWaiting = () => {
+    isLoading.value = true
+    error.value = ''
+    clearTimeout(stallTimeout)
+    stallTimeout = setTimeout(checkStalled, 15000)
+}
+
+const handlePlaying = () => {
+    isLoading.value = false
+    clearTimeout(stallTimeout)
 }
 
 // Lifecycle
@@ -461,8 +507,8 @@ onMounted(() => {
 
   // Watch volume
   watch(volume, (v) => {
-    if (videoRef.value) {
-      videoRef.value.volume = v
+    if (videoEl.value) {
+      videoEl.value.volume = v
       isMuted.value = v === 0
     }
   }, { immediate: true })
@@ -472,6 +518,7 @@ onUnmounted(() => {
   if (hlsInstance.value) hlsInstance.value.destroy()
   window.removeEventListener('keydown', handleKeydown)
   clearTimeout(controlsTimeout)
+  clearTimeout(stallTimeout)
 })
 
 watch(() => props.src, () => {
@@ -481,9 +528,9 @@ watch(() => props.src, () => {
 })
 
 defineExpose({
-  play: () => videoRef.value?.play(),
-  pause: () => videoRef.value?.pause(),
-  seek: (t: number) => { if (videoRef.value) videoRef.value.currentTime = t },
+  play: () => videoEl.value?.play(),
+  pause: () => videoEl.value?.pause(),
+  seek: (t: number) => { if (videoEl.value) videoEl.value.currentTime = t },
   currentTime
 })
 </script>

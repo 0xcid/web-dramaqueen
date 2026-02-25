@@ -28,7 +28,13 @@
             </button>
           </div>
           
-          <div class="flex-shrink-0 bg-black">
+          <div class="flex-shrink-0 bg-black relative aspect-video w-full">
+            <div v-if="isLoadingEpisode" class="absolute inset-0 flex items-center justify-center z-10">
+              <div class="relative w-12 h-12">
+                <div class="absolute inset-0 border-4 border-primary-500/20 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            </div>
             <VideoPlayer
               v-if="videoUrl"
               :key="videoUrl"
@@ -131,6 +137,7 @@ const api = useApi()
 
 const currentEpisode = ref<Episode | null>(null)
 const videoUrl = ref('')
+const isLoadingEpisode = ref(false)
 
 const qualityOptions = computed(() => {
   if (!currentEpisode.value) return []
@@ -168,7 +175,9 @@ const selectEpisode = async (ep: Episode) => {
   } catch (e) {}
   
   try {
+    isLoadingEpisode.value = true
     if (!ep.videoUrl) {
+      videoUrl.value = ''
       const fullEp = await api.getEpisode(ep.id)
       if (fullEp) {
         ep = { ...ep, ...fullEp }
@@ -176,15 +185,18 @@ const selectEpisode = async (ep: Episode) => {
     }
     
     currentEpisode.value = ep
-    videoUrl.value = ep.videoUrl || ep.link_720_premium || ep.link720_premium || ep.link_480 || ep.link_360 || ''
+    videoUrl.value = ep.videoUrl || ep.link_720_premium || (ep as any).link720_premium || ep.link_480 || ep.link_360 || ''
     
-    if (props.drama) {
-      updateEpisode(props.drama.id, ep.id, ep.episodeNumber)
+    if (props.drama?.id) {
+      updateEpisode(props.drama.id as string, ep.id, ep.episodeNumber)
     }
 
+    // Delay preload more to not compete with active video loading
     preloadNextEpisode()
   } catch (error) {
     console.error('Failed to load episode:', error)
+  } finally {
+    isLoadingEpisode.value = false
   }
 }
 
@@ -194,23 +206,27 @@ const preloadNextEpisode = () => {
   setTimeout(async () => {
     try {
       const nextEp = nextEpisode.value
-      if (!nextEp.videoUrl) {
+      if (!nextEp) return;
+      
+      let prefetchUrl = nextEp.videoUrl;
+      
+      if (!prefetchUrl) {
         const fullEp = await api.getEpisode(nextEp.id)
-        if (fullEp) {
-          nextEpisode.value = { ...nextEp, ...fullEp }
+        if (fullEp && fullEp.videoUrl) {
+          prefetchUrl = fullEp.videoUrl
         }
       }
       
-      if (nextEpisode.value?.videoUrl) {
+      if (prefetchUrl) {
         const link = document.createElement('link')
         link.rel = 'prefetch'
-        link.href = nextEpisode.value.videoUrl
+        link.href = prefetchUrl
         document.head.appendChild(link)
       }
     } catch (e) {
       console.log('Preload next episode skipped')
     }
-  }, 2000)
+  }, 10000) // Increase delay from 2s to 10s so it doesn't steal bandwidth from initial playback
 }
 
 const onProgress = (progress: number) => {
