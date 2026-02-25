@@ -60,10 +60,12 @@ const selectedEpisodeId = ref('')
 
 const { data, pending } = await useAsyncData('drama-list', () => api.getDramaList(1, 24))
 
-if (data.value) {
-  dramas.value = data.value
-  hasMore.value = data.value.length >= 24
-}
+watch(data, (newVal) => {
+  if (newVal) {
+    dramas.value = [...newVal]
+    hasMore.value = newVal.length >= 24
+  }
+}, { immediate: true })
 
 const loadMore = async () => {
   if (loadingMore.value || !hasMore.value) return
