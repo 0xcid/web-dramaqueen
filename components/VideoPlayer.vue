@@ -198,6 +198,7 @@
 
 <script setup lang="ts">
 import Hls from 'hls.js'
+import { toggleFullscreenHelper, addFullscreenListeners, type FullscreenState } from '~/utils/fullscreen'
 
 const props = defineProps<{
   src: string
@@ -233,6 +234,7 @@ const error = ref('')
 const showControls = ref(true)
 const showQualityMenu = ref(false)
 let controlsTimeout: any = null
+let cleanupFullscreen: (() => void) | null = null
 
 // Computed
 const progressPercent = computed(() => {
@@ -348,21 +350,16 @@ const toggleMute = () => {
   videoEl.value.muted = isMuted.value
 }
 
-const toggleFullscreen = () => {
+const toggleFullscreen = async () => {
   if (!containerRef.value) return
-  if (!document.fullscreenElement) {
-    containerRef.value.requestFullscreen().then(() => {
-      if (isHorizontal.value && screen.orientation && 'lock' in screen.orientation) {
-        (screen.orientation as any).lock('landscape').catch(() => {})
-      }
-    }).catch(err => {
-      console.error(`Error attempting to enable fullscreen: ${err.message}`)
-    })
-  } else {
-    if (screen.orientation && 'unlock' in screen.orientation) {
-      screen.orientation.unlock()
-    }
-    document.exitFullscreen()
+  
+  const state = await toggleFullscreenHelper(containerRef.value, videoEl.value)
+  
+  // Custom orientate lock
+  if (state.isFullscreen && isHorizontal.value && screen.orientation && 'lock' in screen.orientation) {
+    (screen.orientation as any).lock('landscape').catch(() => {})
+  } else if (!state.isFullscreen && screen.orientation && 'unlock' in screen.orientation) {
+    screen.orientation.unlock()
   }
 }
 
@@ -528,13 +525,15 @@ const handlePlaying = () => {
 onMounted(() => {
   initPlayer()
   window.addEventListener('keydown', handleKeydown)
-  document.addEventListener('fullscreenchange', () => {
-    isFullscreen.value = !!document.fullscreenElement
-    // Unlock orientation if exiting via hardware back or ESC
-    if (!document.fullscreenElement && screen.orientation && 'unlock' in screen.orientation) {
-      screen.orientation.unlock()
-    }
-  })
+  
+  if (containerRef.value) {
+    cleanupFullscreen = addFullscreenListeners(containerRef.value, (state) => {
+      isFullscreen.value = state.isFullscreen
+      if (!state.isFullscreen && screen.orientation && 'unlock' in screen.orientation) {
+        screen.orientation.unlock()
+      }
+    })
+  }
 
   // Watch volume
   watch(volume, (v) => {
@@ -548,6 +547,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (hlsInstance.value) hlsInstance.value.destroy()
   window.removeEventListener('keydown', handleKeydown)
+  if (cleanupFullscreen) cleanupFullscreen()
   clearTimeout(controlsTimeout)
   clearTimeout(stallTimeout)
 })
@@ -619,5 +619,21 @@ input[type="range"]::-webkit-slider-runnable-track {
   cursor: pointer;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
+}
+
+/* Pseudo Fullscreen Fallback */
+:global(.pseudo-fullscreen) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  z-index: 9999 !important;
+  background-color: black !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 </style>
